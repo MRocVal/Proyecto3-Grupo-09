@@ -1,0 +1,113 @@
+------------------------------------------------------------------------
+
+---
+title: "Análisis: Herramientas y procesos de la intervencion"
+author: "Grupo de proyecto 3"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: true
+    toc_float: true
+---
+
+# 1. Carga y Visualización de datos
+
+En este primer punto, se cargan, se separan y visualizan brevemente la disposición de los datos.
+
+```{r}
+# Carga de datos
+data = read.csv('combianted_Total.csv')
+
+# Me quedo con los datos de Patologias Sistemicas
+datos_Intervencion <- data[, 111:905]
+head(datos_Intervencion)
+
+# Sumamos la columna de tipo de operacíon
+datos_Intervencion$TipoOperacion <- data$Tipo_De_Intervencion_Quirurgica
+head(datos_Intervencion)
+```
+
+Como podemos observar, todas las variables son binarias, por lo que no hace falta ninguna transformación de momento.
+
+```{r}
+library(dplyr)
+# Pasamos todas las variables a numerico excepto el tipo de operacion
+datos_Intervencion <- mutate_at(datos_Intervencion, vars(-TipoOperacion), as.numeric)
+
+#
+datos_Intervencion = na.omit(datos_Intervencion)
+```
+
+No hace falta eliminar ninguna de las columnas. Todas estan bien binarizadas y preparadas para el análisis.
+
+Una vez tenemos los datos preparados, vamos a por siguiente punto.
+
+# 2. Análisis PCA y Clustering
+
+## PCA
+
+Comenzamos con el PCA, en este análisis vamos a comprobar el pero que tienen algunas de las variables y ver aquellas que son mas importantes para la interpretación de los datos.
+
+```{r}
+# Instala y carga los paquetes necesarios
+library(dplyr)
+library(factoextra)
+library(cluster)
+
+# Eliminamos el tipo de operación para el calculo del PCA, lo volveremos a usar.
+Pca_data = select(datos_Intervencion, -TipoOperacion)
+
+# Aplicar PCA a los datos escalados
+pca_result <- prcomp(Pca_data)
+
+# Visualiza la varianza explicada por cada componente principal
+fviz_eig(pca_result)
+fviz_pca_ind(pca_result,
+             geom.ind = "point", 
+             col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             ggtheme = theme_minimal()) +
+  theme(legend.position = "right")
+
+# Gráfico de correlaciones entre variables y ejes principales
+fviz_contrib(pca_result, choice = "var", axes = 1:2, top = 10)
+
+# Gráfico de correlaciones entre individuos y ejes principales
+fviz_contrib(pca_result, choice = "ind", axes = 1:2, top = 10)
+
+# Biplot
+# Crear el biplot solo con las variables más importantes
+fviz_pca_biplot(pca_result,
+                col.ind = "cos2", 
+                col.var = "contrib",
+                repel = TRUE,
+                ggtheme = theme_minimal()) +
+  theme(legend.position = "right") +
+  scale_color_gradient(low = "white", high = "red") +  # Cambiar la escala de colores
+  scale_shape_manual(values = c(1, 16))  # Cambiar la forma de los puntos
+
+# Control variable colors using their contributions
+fviz_pca_var(pca_result, col.var="contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping
+             )
+
+
+fviz_pca_ind(pca_result,
+             label = "none", # hide individual labels
+             habillage = datos_Intervencion$TipoOperacion, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07", "red"),
+             addEllipses = TRUE, 
+             ellipse.type = "confidence", # or "t", "norm", "euclid"
+             repel = TRUE # to avoid overlapping labels
+)
+
+
+fviz_pca_var(pca_result, col.var = "cos2", 
+             geom.var = "arrow", 
+             labelsize = 2, 
+             repel = FALSE,
+             col.arrow = "blue")
+
+```

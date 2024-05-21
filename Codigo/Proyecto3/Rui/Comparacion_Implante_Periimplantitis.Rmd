@@ -1,0 +1,278 @@
+---
+title: "Comparación de Pacientes en Cirugía de Implantes Dentales: Colocación vs. Periimplantaria"
+author: "Grupo Proyecto 3"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# INTRODUCCIÓN
+
+Este análisis compara las **características de pacientes sometidos a cirugía de colocación de implantes en la unidad de Implantología Bucal** con aquellos tratados en la **Unidad de Mantenimiento de Implantes**. El **objetivo** es **identificar factores de riesgo para complicacione**s en implantes dentales, **mejorando** así la **atención clínica** y la selección de pacientes.
+
+# CARGA Y LIMPIEZA DE DATOS
+
+## Carga
+
+```{r}
+# Cargamos los datos
+data = read.csv('combianted_Total.csv')
+
+#Visualizamos los tipos de cirugia
+unique(data$Tipo_De_Intervencion_Quirurgica)
+```
+
+En odontología, tenemos tres tipos principales de intervenciones quirúrgicas:
+
+1.  ***Cirugía Dentoalveolar***: Tratamiento de enfermedades y afecciones dentales y de los tejidos circundantes.
+
+2.  ***Implantología Bucal***: Colocación de implantes dentales para reemplazar dientes perdidos.
+
+3.  ***Cirugía Peri-implantaria***: Tratamiento de afecciones alrededor de los implantes dentales.
+
+Nos centraremos en las intervenciones de **Implantología Bucal** y **Cirugía Peri-implantaria** para este estudio.
+
+## Creación de los 2 conjuntos
+
+Para enfocarnos en las dos intervenciones más relevantes, procederemos a filtrar los datos para incluir únicamente los casos relacionados con **Implantología Bucal** y **Cirugía Peri-implantaria**.
+
+```{r}
+library(dplyr)
+
+datos_Implantologia_Bucal <- data %>%
+  filter(data$Tipo_De_Intervencion_Quirurgica == "Implantologia Bucal")
+
+#head(datos_Implantologia_Bucal)
+
+datos_Periimplantaria <- data %>%
+  filter(data$Tipo_De_Intervencion_Quirurgica == "Cirugía Peri-implantaria")
+
+
+datos_Implantologia_Bucal <- datos_Implantologia_Bucal[, 1:57]
+datos_Periimplantaria <- datos_Periimplantaria[, 1:57]
+#head(datos_Periimplantaria)
+
+
+```
+
+Primero, creamos un subconjunto llamado *'datos_Implantologia_Bucal'*, que contiene únicamente las filas de *'data'* donde la variable *'Tipo_De_Intervencion_Quirurgica'* es igual a *'Implantologia Bucal'*.
+
+Luego, creamos otro subconjunto llamado *'datos_Periimplantaria'*, que contiene las filas de *'data'* donde la variable *'Tipo_De_Intervencion_Quirurgica'* es igual a *'Cirugía Peri-implantaria'*.
+
+Finalmente, ambos subconjuntos se reducen a las primeras 57 columnas y se asignan a las variables *'datos_Implantologia_Bucal'* y *'datos_Periimplantaria'*, respectivamente.
+
+## Limpieza
+
+Por último, vamos a limpiar los datos y prerararlo para los análisis.
+
+```{r}
+# Asignar el ID del paciente como nombre de fila: IMPLANTOLOGIA
+row.names(datos_Implantologia_Bucal) <- datos_Implantologia_Bucal$ID_Paciente
+
+datos_Implantologia_Bucal<- datos_Implantologia_Bucal[, !colnames(datos_Implantologia_Bucal) %in% c("ID_Paciente","Cigarros.Diarios")]
+
+
+# Asignar el ID del paciente como nombre de fila: Periimplantitis
+row.names(datos_Periimplantaria) <- datos_Periimplantaria$ID_Paciente
+
+datos_Periimplantaria <- datos_Periimplantaria[, !colnames(datos_Periimplantaria) %in% c("ID_Paciente", "Cigarros.Diarios")]
+
+
+
+library(dplyr)
+datos_Implantologia_Bucal_p <- datos_Implantologia_Bucal %>%
+  select_if(is.numeric)
+
+datos_Periimplantaria_p <- datos_Periimplantaria %>%
+  select_if(is.numeric)
+
+
+
+
+```
+
+Primero, se seleccionan solo las columnas numéricas de cada conjunto de datos utilizando la función *'select_if(is.numeric)'*, lo que resulta en los conjuntos de datos *'datos_Implantologia_Bucal_p'* y *'datos_Periimplantaria_p'*.
+
+Luego, se asigna el ID del paciente como nombre de fila en cada conjunto de datos, utilizando la función *'row.names'*. Esto se hace para facilitar el seguimiento de los pacientes en el análisis posterior.
+
+Después, se eliminan las columnas *'ID_Paciente'* y *'Cigarros.Diarios'* de cada conjunto de datos utilizando la función *'select'* junto con *'!colnames(datos) %in% c("ID_Paciente", "Cigarros.Diarios")'.*
+
+El código prepara los datos para análisis posteriores al filtrar solo las columnas numéricas, asignar nombres de fila basados en el ID del paciente y eliminar columnas no deseadas.
+
+# PCA
+
+En este análisis de PCA, exploraremos las características de los pacientes sometidos a **Implantología Bucal** y **Cirugía Periimplantaria** en odontología. El PCA nos permitirá identificar patrones y relaciones entre las variables, proporcionando conociiento sobre las diferencias y similitudes entre ambas intervenciones quirúrgicas.
+
+## Implantologia
+
+```{r}
+library(factoextra)
+library(cluster)
+library(gridExtra)
+
+# Realizar el análisis de componentes principales (PCA)
+pca_result <- prcomp(datos_Implantologia_Bucal_p)
+
+# Gráfico de la varianza explicada por cada componente principal
+plot_eigenvalues <- fviz_eig(pca_result)
+
+# Gráfico de las contribuciones de las variables a los ejes principales
+plot_var_contrib <- fviz_contrib(pca_result, choice = "var", axes = 1:2, top = 10)
+
+# Gráfico de las contribuciones de los individuos a los ejes principales
+plot_ind_contrib <- fviz_contrib(pca_result, choice = "ind", axes = 1:2, top = 10)
+
+# Organizar los gráficos en una cuadrícula
+grid.arrange(plot_eigenvalues, plot_ind_contrib,
+             ncol = 1)
+
+plot_var_contrib
+
+
+```
+
+Vamos con la intrepretaciond de los primero graficos para el conjunto de datos de Implantologia.
+
+En el scree plot, como observamos, con la primera y segunda compoenete, tenemos uan exlicación de un 50%, los indivis
+
+```{r}
+# Biplot con las variables más importantes
+plot_biplot <- fviz_pca_biplot(pca_result,
+                               col.ind = "cos2",
+                               select.var = list(contrib = 10),
+                               col.var = "contrib",
+                               repel = TRUE,
+                               ggtheme = theme_minimal()) +
+  theme(legend.position = "right") +
+  scale_color_gradient(low = "#00AFBB", high = "#E7B800") +
+  scale_shape_manual(values = c(1, 16))
+
+# Gráfico de las contribuciones de las variables al PCA
+plot_var_contrib_pca <- fviz_pca_var(pca_result, 
+                                     select.var = list(contrib = 10),
+                                     col.var = "contrib",
+                                     gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                                     repel = TRUE)
+
+# Gráfico de los individuos en el PCA con colores por género
+plot_ind_pca_gender <- fviz_pca_ind(pca_result,
+                                    label = "none",
+                                    habillage = datos_Implantologia_Bucal$Genero,
+                                    palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+                                    addEllipses = TRUE,
+                                    ellipse.type = "confidence",
+                                    repel = TRUE)
+
+# Organizar los gráficos en una cuadrícula
+grid.arrange(plot_biplot, plot_ind_pca_gender,
+             ncol = 1, heights = c(5, 4))
+plot_var_contrib_pca
+```
+
+EXPLICACION
+
+## Periimplantitis
+
+```{r}
+# Realizar el análisis de componentes principales (PCA)
+pca_result2 <- prcomp(datos_Periimplantaria_p)
+
+# Gráfico de la varianza explicada por cada componente principal
+plot_eigenvalues2 <- fviz_eig(pca_result2)
+
+# Gráfico de las contribuciones de las variables a los ejes principales
+plot_var_contrib2 <- fviz_contrib(pca_result2, choice = "var", axes = 1:2, top = 10)
+
+# Gráfico de las contribuciones de los individuos a los ejes principales
+plot_ind_contrib2 <- fviz_contrib(pca_result2, choice = "ind", axes = 1:2, top = 10)
+
+# Organizar los gráficos en una cuadrícula
+grid.arrange(plot_eigenvalues, plot_ind_contrib,
+             ncol = 1)
+
+plot_var_contrib2
+
+```
+
+EXPLICACION
+
+```{r}
+# Biplot con las variables más importantes
+plot_biplot2 <- fviz_pca_biplot(pca_result2,
+                               col.ind = "cos2",
+                               select.var = list(contrib = 10),
+                               col.var = "contrib",
+                               repel = TRUE,
+                               ggtheme = theme_minimal()) +
+  theme(legend.position = "right") +
+  scale_color_gradient(low = "#00AFBB", high = "#E7B800") +
+  scale_shape_manual(values = c(1, 16))
+
+# Gráfico de las contribuciones de las variables al PCA
+plot_var_contrib_pca2 <- fviz_pca_var(pca_result2, 
+                                     select.var = list(contrib = 10),
+                                     col.var = "contrib",
+                                     gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                                     repel = TRUE)
+
+# Gráfico de los individuos en el PCA con colores por género
+plot_ind_pca_gender2 <- fviz_pca_ind(pca_result2,
+                                    label = "none",
+                                    habillage = datos_Periimplantaria$Genero,
+                                    palette = c("#00AFBB", "#E7B800"),
+                                    addEllipses = TRUE,
+                                    ellipse.type = "confidence",
+                                    repel = TRUE)
+
+# Organizar los gráficos en una cuadrícula
+grid.arrange(plot_biplot2, plot_ind_pca_gender2,
+             ncol = 1, heights = c(5, 4))
+plot_var_contrib_pca2
+```
+
+EXPLICACION
+
+# IMPLANTOLOGIA Vs PERIIMPLANTOLOGIA
+
+En este putno, comparamos dos intervenciones quirúrgicas en implantología dental: la **Implantología Bucal** (colocación de implantes) y la **Cirugía Periimplantaria** (tratamiento de complicaciones). Utilizamos Análisis de Componentes Principales (PCA) para explorar datos de pacientes sometidos a ambas intervenciones. El PCA nos proporcionó gráficos multidimensionales que visualizan las características principales de los pacientes y los factores asociados con cada intervención. Estas visualizaciones nos ayudaron a identificar diferencias y similitudes entre los **dos grupos de pacientes,** así como posibles factores de riesgo para complicaciones.
+
+```{r}
+# Comparamos todos los graficos
+plot_biplot2 <- plot_biplot2 + ggtitle("Periimplantaria")
+plot_biplot <- plot_biplot2 + ggtitle("Implantologia")
+
+grid.arrange(plot_biplot2, plot_biplot,
+             ncol = 1, heights = c(5, 4))
+
+```
+
+DIFERENCIAS
+
+```{r}
+
+plot_var_contrib_pca2 <- plot_var_contrib_pca2 + ggtitle("Periimplantaria")
+plot_var_contrib_pca <- plot_var_contrib_pca + ggtitle("Implantologia")
+
+grid.arrange(plot_var_contrib_pca2, plot_var_contrib_pca,
+             ncol = 1, heights = c(5, 4))
+
+```
+
+DIFERENCIAS
+
+```{r}
+
+plot_ind_pca_gender2 <- plot_ind_pca_gender2 + ggtitle("Periimplantaria")
+plot_ind_pca_gender <- plot_ind_pca_gender + ggtitle("Implantologia")
+
+grid.arrange(plot_ind_pca_gender2, plot_ind_pca_gender,
+             ncol = 1, heights = c(5, 4))
+```
+
+Diferencias
+
+# CONCLUSIONES
+
+....

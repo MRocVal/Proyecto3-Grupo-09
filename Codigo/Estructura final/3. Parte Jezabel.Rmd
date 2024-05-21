@@ -1,0 +1,645 @@
+---
+title: "Diferencias pacientes"
+output: html_document
+date: "2024-04-22"
+---
+
+```{r}
+#install.packages('factoextra')
+#install.packages('cluster')
+#install.packages('gridExtra')
+#install.packages('dplyr')
+library(dplyr)
+library(factoextra)
+library(cluster)
+library(gridExtra)
+
+data = read.csv('combianted_Total.csv')
+data <- data[, 1:111]
+
+
+#convertimos la variable genero a binario: 
+data <- data %>%
+  mutate(Genero = case_when(
+    Genero == "Mujer" ~ "1",
+    Genero == "Hombre" ~ "0",
+    Genero == "0" ~ NA_character_, # Convertimos el "0" string a NA
+    TRUE ~ Genero # Mantener el valor original en otros casos (si los hay)
+  )) %>%
+  mutate(Genero = as.numeric(Genero)) # Convertir a numérico para tener 1, 0 y NA
+
+data <- data %>%
+  filter(!is.na(Genero))
+
+data <- data %>% filter(data$Tipo_De_Intervencion_Quirurgica == "Implantologia Bucal" | data$Tipo_De_Intervencion_Quirurgica == "Cirugía Peri-implantaria" )
+
+tipo_intervencion <- data$Tipo_De_Intervencion_Quirurgica
+data <- select(data,-IP_Adress, -Operador, -Auxiliar, -Jefe_de_dia, -No.fumador.a, -Medicacion_actual, -Número_de_cigarrillos.día)
+
+
+head(data)
+```
+```{r}
+dataNumImplantologia <- data %>% filter(data$Tipo_De_Intervencion_Quirurgica == "Implantologia Bucal")
+
+dataNumPeri <- data %>% filter( data$Tipo_De_Intervencion_Quirurgica == "Cirugía Peri-implantaria" )
+
+```
+Para realizar la comparación de las variables binarias entre dos bases de datos (daraNumPeri y dataNumImplantologia) y determinar si las diferencias en la distribución de cada variable son estadísticamente significativas, podemos utilizar el test de Chi-cuadrado. Este test es apropiado para comparar proporciones de categorías entre grupos.
+
+```{r}
+# Función para realizar el test de chi-cuadrado en una columna
+perform_chi_squared_test <- function(column_name) {
+  # Crear una tabla de contingencia
+  table1 <- table(dataNumPeri[[column_name]])
+  table2 <- table(dataNumImplantologia[[column_name]])
+  
+  # Ajustar por si alguna tabla no tiene todas las categorías
+  all_levels <- sort(union(names(table1), names(table2)))
+  table1 <- table1[all_levels]
+  table2 <- table2[all_levels]
+  
+  # Asegurarse de que ambos tengan 0s si falta alguna categoría
+  table1[is.na(table1)] <- 0
+  table2[is.na(table2)] <- 0
+  
+  # Realizar el test chi-cuadrado
+  test_result <- chisq.test(rbind(table1, table2))
+  
+  # Verificar si el resultado es significativo
+  if (test_result$p.value < 0.05) {
+    return(column_name)
+  } else {
+    return(NULL)
+  }
+}
+
+# Aplicar la función a cada columna y almacenar los resultados
+significant_variables <- sapply(names(dataNumPeri), perform_chi_squared_test, simplify = FALSE)
+significant_variables <- Filter(Negate(is.null), significant_variables)
+
+# Imprimir los nombres de las variables con diferencias significativas
+print(significant_variables)
+```
+
+
+Vamos a seleccionar las variables que su proporción de 1s se diferencia más del 10% entre implantología bucal y periimplantaria
+
+```{r}
+combined_data <- rbind(dataNumImplantologia, dataNumPeri)
+combined_data$Dataset <- rep(c("Implantologia", "Peri"), 
+                             c(nrow(dataNumImplantologia), nrow(dataNumPeri)))
+
+binary_vars <- sapply(combined_data, function(x) all(sort(unique(na.omit(x))) %in% c(0, 1)) && length(unique(na.omit(x))) == 2)
+binary_data <- combined_data[, binary_vars]
+
+# Separar los datos por dataset
+dataImplantologia <- binary_data[combined_data$Dataset == "Implantologia", ]
+dataPeri <- binary_data[combined_data$Dataset == "Peri", ]
+
+# Función para calcular proporciones
+prop_1s <- function(x) mean(x == 1, na.rm = TRUE)
+
+# Aplicar la función a cada subconjunto
+props_Implantologia <- sapply(dataImplantologia, prop_1s)
+props_Peri <- sapply(dataPeri, prop_1s)
+
+# Calcular diferencias
+diff_props <- abs(props_Implantologia - props_Peri)
+
+# Filtrar las variables con diferencias mayores al 10%
+significant_vars <- names(diff_props[diff_props > 0.1])
+
+# Imprimir las variables significativas
+print(significant_vars)
+
+```
+
+
+
+
+```{r}
+library(ggplot2)
+
+library(ggplot2)
+
+# Asumimos que las bases de datos ya están combinadas en un dataframe llamado 'combined_data'
+# y que incluye una columna 'Dataset' que indica a qué conjunto de datos pertenece cada observación.
+combined_data$Fumador.a <- as.factor(combined_data$Fumador.a)
+
+# Calcular las proporciones
+ggplot(combined_data, aes(x = "", fill = Fumador.a)) +
+  geom_bar(position = "fill", stat = "count") +  # position = "fill" takes care of the percentage calculation
+  facet_grid(~ Dataset) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("#4D80E4", "#E4B04D"), name = "Fumadores") +
+  labs(title = "Proporciones de fumadores en Implantología vs Peri-implantaria",
+       y = "Porcentaje",
+       x = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom")
+
+```
+```{r}
+library(ggplot2)
+
+# Asumimos que las bases de datos ya están combinadas en un dataframe llamado 'combined_data'
+# y que incluye una columna 'Dataset' que indica a qué conjunto de datos pertenece cada observación.
+combined_data$Hipercolesterolemia <- as.factor(combined_data$Hipercolesterolemia)
+
+# Calcular las proporciones
+ggplot(combined_data, aes(x = "", fill = Hipercolesterolemia)) +
+  geom_bar(position = "fill", stat = "count") +  # position = "fill" takes care of the percentage calculation
+  facet_grid(~ Dataset) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("#4D80E4", "#E4B04D"), name = "Hipercolesterolemia") +
+  labs(title = "Proporciones de Hipercolesterolemia en Implantología vs Peri-implantaria",
+       y = "Porcentaje",
+       x = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom")
+
+
+
+
+
+```
+
+```{r}
+
+# Asumimos que las bases de datos ya están combinadas en un dataframe llamado 'combined_data'
+# y que incluye una columna 'Dataset' que indica a qué conjunto de datos pertenece cada observación.
+combined_data$Hipertensión.Arterial <- as.factor(combined_data$Hipertensión.Arterial)
+
+# Calcular las proporcion
+ggplot(combined_data, aes(x = "", fill = Hipertensión.Arterial)) +
+  geom_bar(position = "fill", stat = "count") +  # position = "fill" takes care of the percentage calculation
+  facet_grid(~ Dataset) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("#4D80E4", "#E4B04D"), name = "Hipertensión arterial") +
+  labs(title = "Proporciones de Antihipertensivos en Implantología vs Peri-implantaria",
+       y = "Porcentaje",
+       x = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom")
+```
+```{r}
+
+# Asumimos que las bases de datos ya están combinadas en un dataframe llamado 'combined_data'
+# y que incluye una columna 'Dataset' que indica a qué conjunto de datos pertenece cada observación.
+combined_data$Fármacos.hipolipemiantes <- as.factor(combined_data$Fármacos.hipolipemiantes)
+
+# Calcular las proporcione
+ggplot(combined_data, aes(x = "", fill = Fármacos.hipolipemiantes)) +
+  geom_bar(position = "fill", stat = "count") +  # position = "fill" takes care of the percentage calculation
+  facet_grid(~ Dataset) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("#4D80E4", "#E4B04D"), name = "FÃ.rmacos.hipolipemiantes") +
+  labs(title = "Proporciones de FÃ.rmacos.hipolipemiantes en Implantología vs Peri-implantaria",
+       y = "Porcentaje",
+       x = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom")
+```
+## PCA Y PLSDISCRIMINTNATE
+
+## PCA para ver si se separa
+Volvemos a cargar los datos porque ahora los queremos numéricos
+
+
+```{r}
+library(factoextra)
+library(cluster)
+library(gridExtra)
+
+data = read.csv('combianted_Total.csv')
+
+data <- data[, 1:111]
+
+
+#convertimos la variable genero a binario: 
+data <- data %>%
+  mutate(Genero = case_when(
+    Genero == "Mujer" ~ "1",
+    Genero == "Hombre" ~ "0",
+    Genero == "0" ~ NA_character_, # Convertimos el "0" string a NA
+    TRUE ~ Genero # Mantener el valor original en otros casos (si los hay)
+  )) %>%
+  mutate(Genero = as.numeric(Genero)) # Convertir a numérico para tener 1, 0 y NA
+
+data <- data %>%
+  filter(!is.na(Genero))
+
+data <- data %>% filter(data$Tipo_De_Intervencion_Quirurgica == "Implantologia Bucal" | data$Tipo_De_Intervencion_Quirurgica == "Cirugía Peri-implantaria" )
+
+tipo_intervencion <- data$Tipo_De_Intervencion_Quirurgica
+
+data <- select(data,-IP_Adress, -Operador, -Auxiliar, -Jefe_de_dia, -Fumador.a, -Medicacion_actual, -Número_de_cigarrillos.día)
+dataPCA = data
+
+dataPCA_comparativo <- data %>%
+  select_if(is.numeric)
+```
+
+
+probamos Quitando la variable Patologia_1stematica y Medicacion_Actual2 ya que esa infor ya nos la dan las distintas patlogías y medicaciones. Además, tb añadiremos probar a eliminamos las medicinas o enfermedades que apaerzcan menos de 3 veces. (2 o menos) 
+
+
+```{r}
+
+dataPCA_comparativo <- select(dataPCA_comparativo, -Patologia_1stemica, -Medicacion_Actual2)
+
+# Instala y carga el paquete dplyr si aún no lo has hecho
+if (!require(dplyr)) {
+  install.packages("dplyr")
+}
+library(dplyr)
+
+# Suponiendo que tienes un DataFrame llamado dataPCA_comparativo
+
+# Función para filtrar y eliminar variables con 1 dos veces o menos a partir de la cuarta columna
+filtrar_variables <- function(data, threshold = 2) {
+  
+  # Contar las apariciones de 1 en cada columna a partir de la cuarta columna
+  conteo <- data %>% 
+    select(4:ncol(data)) %>% 
+    summarise_all(sum)
+  
+  # Identificar columnas a eliminar
+  columnas_eliminar <- names(conteo)[conteo <= threshold]
+  
+  # Eliminar las columnas del DataFrame original
+  data_filtrado <- data %>% 
+    select(-one_of(columnas_eliminar))
+  
+  return(data_filtrado)
+}
+
+# Aplicar la función para filtrar variables a partir de la cuarta columna
+dataPCA_comparativo_filtrado <- filtrar_variables(dataPCA_comparativo)
+
+
+pca_result <- prcomp(dataPCA_comparativo_filtrado)
+
+# Gráfico de la varianza explicada por cada componente principal
+plot_eigenvalues <- fviz_eig(pca_result)
+
+# Gráfico de las contribuciones de las variables a los ejes principales
+plot_var_contrib <- fviz_contrib(pca_result, choice = "var", axes = 1, top = 10)
+
+# Gráfico de las contribuciones de los individuos a los ejes principales
+plot_ind_contrib <- fviz_contrib(pca_result, choice = "ind", axes = 1:2, top = 10)
+
+# Organizar los gráficos en una cuadrícula
+grid.arrange(plot_eigenvalues, plot_ind_contrib,
+             ncol = 1)
+
+plot_var_contrib
+plot_ind_contrib
+
+```
+```{r}
+plot_ind_pca_gender <- fviz_pca_ind(pca_result,
+                                    label = "none",
+                                    habillage = tipo_intervencion,
+                                    palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+                                    addEllipses = TRUE,
+                                    ellipse.type = "confidence",
+                                    repel = TRUE)
+plot_ind_pca_gender
+```
+
+Realizamos el modelo discriminante
+
+```{r}
+# Instalar y cargar caret y pls
+if (!requireNamespace("caret", quietly = TRUE)) {
+    install.packages("caret")
+}
+if (!requireNamespace("pls", quietly = TRUE)) {
+    install.packages("pls")
+}
+
+library(caret)
+library(pls)
+
+# Preparar los datos
+data <- dataPCA_comparativo
+response <- tipo_intervencion
+
+# Definir el control de entrenamiento y el método de ajuste del modelo
+train_control <- trainControl(method = "cv", number = 10, savePredictions = "final")
+plsda_model <- train(x = data, y = response, method = "pls", trControl = train_control)
+
+# Resumen del modelo
+print(plsda_model)
+
+
+
+```
+
+hacemos una prueba de la probabilidad de pertenecer a cada grupo que nos daría para la instancia 1
+
+```{r}
+library(caret)
+
+# Datos y respuesta
+data <- dataPCA_comparativo
+response <- tipo_intervencion
+
+# Definir el control de entrenamiento con validación cruzada
+train_control <- trainControl(method = "cv", number = 10, savePredictions = "final")
+
+# Ajustar el modelo PLS-DA con una sola componente principal
+plsda_model <- train(x = data, y = response, method = "pls", 
+                     trControl = train_control,
+                     tuneGrid = data.frame(ncomp = 1),
+                     preProcess = "scale")
+
+# Resumen del modelo
+print(plsda_model)
+
+
+# Crear un nuevo dataframe que simule una nueva observación
+# Asegúrate de que tenga el mismo número y tipo de variables que 'data'
+new_data <- data[1, , drop = FALSE]  # Suponemos que usamos la primera fila como ejemplo
+
+# Obtener las probabilidades de las clases
+probabilities <- predict(plsda_model, new_data, type = "prob")
+
+# Mostrar las probabilidades
+print(probabilities)
+
+
+```
+
+## GRÁFICOS CON BASE DE DATOS CATEGÓRICAS
+
+```{r}
+data = read.csv('combianted_Total.csv')
+data <- data %>%
+  filter(data$Tipo_De_Intervencion_Quirurgica == "Implantologia Bucal" | data$Tipo_De_Intervencion_Quirurgica == "CirugÃ­a Peri-implantaria" )
+data <- data[, 1:111]
+conteo <- table(data$Tipo_De_Intervencion_Quirurgica)
+print(conteo)
+
+
+
+```
+
+
+```{r}
+#creamos columna del tipo de patología
+for(i in 17:57) {
+  # Accedemos al nombre de la columna i-ésima
+  col_name <- names(data)[i]
+  
+  # Usamos un bucle para revisar cada fila
+  for(j in 1:nrow(data)) {
+    # Si encontramos un 1 en la columna i-ésima de la fila j-ésima
+    if(data[j, i] == 1) {
+      # Actualizamos 'Patologia_1stemica' con el nombre de la columna actual
+      data[j, 'Patologia_1stemica'] <- col_name
+    }
+  }
+}
+data <- data %>%
+  mutate(Patologia_1stemica = replace(Patologia_1stemica, Patologia_1stemica == "0", "ninguna"))
+
+
+
+
+
+
+#creamos una columna del tipo de medicación
+for(i in 60:108) {
+  # Accedemos al nombre de la columna i-ésima
+  col_name <- names(data)[i]
+  
+  # Usamos un bucle para revisar cada fila
+  for(j in 1:nrow(data)) {
+    # Si encontramos un 1 en la columna i-ésima de la fila j-ésima
+    if(data[j, i] == 1) {
+      # Actualizamos 'Patologia_1stemica' con el nombre de la columna actual
+      data[j, 'Medicacion_Actual2'] <- col_name
+    }
+  }
+}
+data <- data %>%
+  mutate(Medicacion_Actual2 = replace(Medicacion_Actual2, Medicacion_Actual2 == "0", "ninguna"))
+
+
+data <- data %>%
+  select(-c(17:57, 60:108))
+
+install.packages('lubridate')
+library(lubridate)
+
+# Primero, ajustamos los años en la fecha de nacimiento
+data$Fecha_Nacimiento <- as.character(data$Fecha_Nacimiento)
+
+data$Fecha_Nacimiento <- sapply(data$Fecha_Nacimiento, function(fecha) {
+  partes <- strsplit(fecha, "/")[[1]]
+  año <- as.numeric(partes[3])
+  if (año > 20 && año <= 99) {  # Si el año está entre 21 y 99, se considera siglo XX
+    partes[3] <- paste0("19", partes[3])
+  } else if (año <= 20) {  # Si el año es 20 o menor, se considera siglo XXI
+    partes[3] <- paste0("20", partes[3])
+  }
+  paste(partes[1], partes[2], partes[3], sep = "/")
+})
+
+data$Fecha_Nacimiento <- dmy(data$Fecha_Nacimiento)
+
+# Ahora calculamos la edad
+data$edad <- floor(interval(start = data$Fecha_Nacimiento, end = Sys.Date()) / years(1))
+
+# Finalmente, creamos la columna 'categoria_edad' con las categorías especificadas
+data <- data %>%
+  mutate(categoria_edad = case_when(
+    edad >= 10 & edad < 20 ~ '10-20',
+    edad >= 20 & edad < 30 ~ '20-30',
+    edad >= 30 & edad < 40 ~ '30-40',
+    edad >= 40 & edad < 50 ~ '40-50',
+    edad >= 50 & edad < 60 ~ '50-60',
+    edad >= 60 & edad < 70 ~ '60-70',
+    edad >= 70 & edad < 80 ~ '70-80',
+    edad >= 80 & edad < 90 ~ '80-90',
+    edad >= 90 & edad <= 100 ~ '90-100',
+    TRUE ~ 'Fuera de rango'
+  ))
+
+data <- data %>%
+  mutate(nivel_de_fumador = case_when(
+    `Fumador.a` == 1 ~ "Fumador.a",
+    `No.fumador.a` == 1 & `Exfumador.a` == 1 ~ "Exfumador.a",
+    `Exfumador.a` == 1 & `No.fumador.a` == 0 ~ "Exfumador.a",
+    `No.fumador.a` == 1 & `Exfumador.a` == 0 ~ "No.fumador.a",
+    TRUE ~ NA_character_  # Para cualquier otro caso no especificado, asignamos NA
+  ))
+
+
+#eliminamos las que hemos transformado (agrupado en una columna)
+
+data <- data %>%
+  select(-Fecha_Nacimiento, -Date_Create, -IP_Adress, -Operador, -Auxiliar, -Jefe_de_dia, -Fecha_intervencion, -Fecha_Nacimiento, -No.fumador.a, -Exfumador.a, -Fumador.a, -Otras_Drogas, -Medicacion_actual, -Otro..especifique., -edad, -Tipo_De_cirugia, -Otro..especifique._17)
+
+data <- data %>%
+  select(-NÃºmero_de_cigarrillos.dÃ.a)
+data <- data[!is.na(data$nivel_de_fumador), ]
+
+#COmo patologia sistematica y medicacion actual contienen muchos valores con pocas muestras vamos a poner que se agrupen los que salgan menos de x veces en un valor llamado otros
+
+# Obtener la frecuencia de cada valor en Patologia_1stemica
+freq_patologia <- table(data$Patologia_1stemica)
+
+# Mostrar los valores que aparecen menos de 5 veces
+print(freq_patologia[freq_patologia < 5])
+
+# Identificar los valores que aparecen menos de 5 veces
+infrequent_values <- names(freq_patologia[freq_patologia < 5])
+
+# Actualizar los valores a 'Otros'
+data$Patologia_1stemica[data$Patologia_1stemica %in% infrequent_values] <- 'Otros'
+
+
+#y hacemos lo mismo con medicacion actual
+# Obtener la frecuencia de cada valor en Patologia_1stemica
+freq_medicacion <- table(data$Medicacion_Actual2)
+
+# Mostrar los valores que aparecen menos de 5 veces
+print(freq_medicacion[freq_medicacion < 2])
+
+# Identificar los valores que aparecen menos de 5 veces
+infrequent_values <- names(freq_medicacion[freq_medicacion < 5])
+
+# Actualizar los valores a 'Otros'
+data$Medicacion_Actual2[data$Medicacion_Actual2 %in% infrequent_values] <- 'Otros'
+
+head(data)
+
+``` 
+
+
+```{r}
+if (!requireNamespace("ggplot2", quietly = TRUE))
+  install.packages("ggplot2")
+library(ggplot2)
+
+data <- data %>%
+  mutate(nivel_de_fumador = factor(nivel_de_fumador, levels = names(sort(table(nivel_de_fumador), decreasing = TRUE))))
+# Establecer una fuente específica para usar en ggplot
+ggplot(data, aes(x = nivel_de_fumador, fill = nivel_de_fumador)) +
+  geom_bar(stat = "count", width = 0.6, color = "black", size = 0.1) +
+  scale_fill_manual(values = c("No.fumador.a" = "#a1c9f4", "Fumador.a" = "#b9e2f0")) +
+  labs(
+    title = "Distribución por tipo de fumador",
+    x = "Categoría de fumador",
+    y = "Total de respuestas"
+  ) +
+  theme_minimal(base_size = 16) +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_line(color = "#e2e2e2"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    legend.position = "none",
+    plot.margin = margin(20, 20, 20, 20)
+  )
+
+```
+
+```{r}
+
+#ordenamos la variable
+data <- data %>%
+  mutate(Patologia_1stemica = factor(Patologia_1stemica, levels = names(sort(table(Patologia_1stemica), decreasing = TRUE))))
+
+ggplot(data, aes(x = Patologia_1stemica, fill = Patologia_1stemica)) +
+  geom_bar(stat = "count", width = 0.6, color = "black", size = 0.1) +
+  scale_fill_manual(values = c("ninguna" = "#FFF1AC", "HipertensiÃ³n.Arterial" = "#b9e2f0", "Hipercolesterolemia" = "#a1c9f4","Otros" = "#FDB9C8","Artrosis" = "#D5A6E6" )) +
+  labs(
+    title = "Distribución por tipos de Patologías sistémicas",
+    x = "Categoría de Patologías",
+    y = "Total de respuestas"
+  ) +
+  theme_minimal(base_size = 16) +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_line(color = "#e2e2e2"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    legend.position = "none",
+    plot.margin = margin(20, 20, 20, 20),
+    axis.text.x = element_text(angle = 45, hjust = 1) # Etiquetas rotadas para prevenir superposición
+  
+  )
+```
+```{r}
+
+data <- data %>%
+  mutate(Medicacion_Actual2 = factor(Medicacion_Actual2, levels = names(sort(table(Medicacion_Actual2), decreasing = TRUE))))
+
+ggplot(data, aes(x = Medicacion_Actual2, fill = Medicacion_Actual2)) +
+  geom_bar(stat = "count", width = 0.6, color = "black", size = 0.1) +
+  scale_fill_manual(values = c("ninguna" = "#FFF1AC", "FÃ.rmacos.hipolipemiantes" = "#b9e2f0", "Antihipertensivos" = "#a1c9f4","Otros" = "#FDB9C8","Antidepresivos" = "#D5A6E6" )) +
+  labs(
+    title = "Distribución por tipo de medicación del paciente",
+    x = "Tipos de medicamiento",
+    y = "Total de respuestas"
+  ) +
+  theme_minimal(base_size = 16) +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_line(color = "#e2e2e2"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    legend.position = "none",
+    plot.margin = margin(20, 20, 20, 20),
+    axis.text.x = element_text(angle = 45, hjust = 1) # Etiquetas rotadas para prevenir superposición
+  
+  )
+
+```
+
+```{r}
+"30-40" "60-70" "40-50" "50-60" "20-30" "70-80" "80-90" "10-20"
+data <- data %>%
+  mutate(categoria_edad = factor(categoria_edad, levels = names(sort(table(categoria_edad), decreasing = TRUE))))
+
+ggplot(data, aes(x = categoria_edad, fill = categoria_edad)) +
+  geom_bar(stat = "count", width = 0.6, color = "black", size = 0.1) +
+  scale_fill_manual(values = c("30-40" = "#FFF1AC", "60-70" = "#b9e2f0", "40-50" = "#a1c9f4","50-60" = "#FDB9C8","20-30" = "#D5A6E6" )) +
+  labs(
+    title = "Distribución por edad",
+    x = "Edad",
+    y = "Total de respuestas"
+  ) +
+  theme_minimal(base_size = 16) +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_line(color = "#e2e2e2"),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    legend.position = "none",
+    plot.margin = margin(20, 20, 20, 20),
+    axis.text.x = element_text(angle = 45, hjust = 1) # Etiquetas rotadas para prevenir superposición
+)
+
+```
+
+
+
+

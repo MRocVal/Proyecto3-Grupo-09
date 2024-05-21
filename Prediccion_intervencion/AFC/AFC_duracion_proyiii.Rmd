@@ -1,0 +1,147 @@
+---
+title: "AFC Proyecto III"
+author: "Yassmina"
+output: html_notebook
+---
+
+# 1. Data preparation
+
+```{r warning=FALSE}
+library(dplyr)
+library(caret)
+library(ggplot2)
+library(lattice)
+# Primera fila como nombre de las columnas
+whiteeth = read.csv("General_data.csv", header = TRUE, sep = ",")
+
+# Eliminar filas 720 y 1584 (son nombres de columnas que se quedaron al concatenar datasets)
+whiteeth <- whiteeth %>% slice(-c(720, 1584))
+
+# Eliminar columnas vacías: name, email, etc.
+whiteeth <- whiteeth %>% select(-c(6:9))
+whiteeth <- whiteeth %>% select(-c(21))
+
+# Arreglar el nombre de algunas columnas
+colnames(whiteeth)[15] <- "No fumador/a"
+colnames(whiteeth)[912] <- "Amoxicilina 750 mg"
+
+# Inspeccionar qué columnas hay
+# colnames(whiteeth)
+```
+
+## Conversion to binary
+
+```{r}
+# Fumadores o no
+columnas_a_recorrer1 <- 15:17
+for (col in columnas_a_recorrer1) {
+  whiteeth[, col] <- ifelse(is.na(whiteeth[, col]) | whiteeth[, col] == "", 0, 1)
+}
+
+# Número de cigarrillos: poner 0 si no hay nada
+whiteeth$Número.de.cigarrillos.día <- ifelse(is.na(whiteeth$Número.de.cigarrillos.día) | whiteeth$Número.de.cigarrillos.día == "", 0,
+                                             whiteeth$Número.de.cigarrillos.día)
+whiteeth$Número.de.cigarrillos.día <- gsub("[^0-9-]", "", whiteeth$Número.de.cigarrillos.día)
+
+# Patologías
+columnas_a_recorrer2 <- 21:112
+for (col in columnas_a_recorrer2) {
+  whiteeth[, col] <- ifelse(is.na(whiteeth[, col]) | whiteeth[, col] == "", 0, 1)
+}
+
+# Características operación: poner 0 si no hay nada
+columnas_a_recorrer3 <- 113:911
+for (col in columnas_a_recorrer3) {
+  whiteeth[, col] <- ifelse(is.na(whiteeth[, col]) | whiteeth[, col] == "", 0, whiteeth[, col])
+}
+
+# Medicamentos
+columnas_a_recorrer4 <- 912:931
+for (col in columnas_a_recorrer4) {
+  whiteeth[, col] <- ifelse(is.na(whiteeth[, col]) | whiteeth[, col] == "", 0, 1)
+}
+
+# Otro medicamento: poner 0 si no hay nada
+whiteeth[, 932] <- ifelse(is.na(whiteeth[, 932]) | whiteeth[, 932] == "", 0, whiteeth[, 932])
+```
+
+# 2. Multiple AFC
+
+```{r warning=FALSE}
+library(mlbench)
+library(estimability)
+library(FactoMineR)
+library(factoextra)
+library(knitr)
+library(stats)
+library(grid)
+library(gridExtra)
+
+# Convertir a categóricas todo
+data <- lapply(whiteeth, as.factor)
+data <- as.data.frame(data)
+
+```
+
+# Eliminación de variables que no queremos
+
+```{r}
+# Nombres de las variables a eliminar
+nombres_variables_a_eliminar <- c("respondent_id", "collector_id", "date_created", "date_modified", 
+                                   "ip_address", "Operador", "Auxiliar", "Jefe.de.Día", 
+                                   "Fecha.Intervención", "Número.Historia.Clínica","Fecha.de.Nacimiento",
+                                  "Género")
+
+# Eliminar las variables por nombre del dataframe
+data_sin_variables <- data[, !(names(data) %in% nombres_variables_a_eliminar)]
+
+```
+# Vamos con el AFC de nuevo
+
+```{r}
+mca <- MCA(data_sin_variables, ncp = 4, graph = FALSE) 
+```
+
+# Sacamos las 100 variables mas contribuyentes
+```{r}
+fviz_contrib(mca, choice = "var", axes = 1:2, top =10)
+# Obtener las contribuciones de las variables a las dimensiones del MCA
+contribuciones <- get_mca_var(mca)$contrib
+
+# Ordenar las variables por su contribución a la primera dimensión del MCA de mayor a menor
+orden <- order(contribuciones[,1], decreasing = TRUE)
+
+# Seleccionar las 100 primeras variables más importantes para las dimensiones 1 y 2
+top_contribuciones <- contribuciones[orden[1:100], 1:2]
+
+nombres_variables_importantes <- rownames(top_contribuciones)
+
+```
+# Limpiamos los nombres
+
+```{r}
+
+# Limpiar los nombres de las variables importantes
+nombres_variables_importantes_limpio <- gsub("_.*$", "", nombres_variables_importantes)
+
+# Seleccionar las columnas correspondientes en el dataframe data_sin_variables
+nuevo_df <- data_sin_variables[, nombres_variables_importantes_limpio]
+
+```
+
+# Añadimos la variable de duración de intervencion
+```{r}
+# Obtener la columna de duración de la intervención desde el dataframe original data
+duracion_intervencion <- data$Duración.de.la.intervención.quirúrgica # Reemplaza "duracion_intervencion" con el nombre real de la columna en data
+
+# Agregar la columna de duración de la intervención al dataframe nuevo_df
+nuevo_df$duracion_intervencion <- duracion_intervencion
+
+```
+# Exportamos en csv
+```{r}
+# Guardar el nuevo dataframe en un archivo CSV
+write.csv(nuevo_df, "nuevo_df.csv", row.names = FALSE)
+```
+
+

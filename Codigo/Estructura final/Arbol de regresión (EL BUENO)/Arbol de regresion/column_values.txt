@@ -1,0 +1,300 @@
+Medicación.Actual:
+No, Sí, nan, Response
+
+Alcohol:
+No consumo, Consumo moderado, Consumo elevado, nan, Response
+
+Otras.Drogas:
+No, nan, Sí, Response
+
+Tuberculosis:
+0, 1
+
+Nitratos.orgánicos:
+0, 1
+
+Hormonas.pancreáticas:
+0, 1
+
+Antitusígenos:
+0, 1
+
+Fármacos.otológicos:
+0, 1
+
+Tipo.de.Intervención.Quirúrgica:
+Cirugía Dentoalveolar, 0, Cirugía Peri-implantaria, Implantología Bucal, Response
+
+Tipo.de.cirugía:
+0, Cirugía combinada (regenerativa + implantoplastia), Cirugía de acceso, Cirugía resectiva, Cirugía regenerativa, Response
+
+X.Se.realizó.implantoplastia.junto.a.la.cirugía.resectiva.:
+0, Sí, Response
+
+X.Qué.material.de.regeneración.ha.sido.utilizado.:
+0, Xenoinjerto (Bio-Oss) + Membrana de colágeno reabsorbible (Bio-Gide), Response
+
+Tipo.de.prótesis.sobre.implantes:
+0, Corona unitaria, Puente sobre implantes, Prótesis híbrida, Sobredentadura, Response, Full-arch metal-cerámica
+
+X.Qué.tipo.de.anclaje.tiene.la.sobredentadura.:
+0, Barra microfresada, Bolas, Response, Locator
+
+Número.de.implantes:
+0, 1, 3, 6, 4, 2, Response, 1.0
+
+Características.del.implante:
+0, 12, 21, Implante 1 - Posición, 11, 36, 23, 45, 16.0
+
+Implante.1...Defecto.tipo.I..infraóseo.:
+0, Id, No, Implante 1 - Defecto tipo I (infraóseo), Ib, Ic, Ie
+
+Implante.1...Defecto.tipo.II..supraóseo.:
+0, Sí, Implante 1 - Defecto tipo II (supraóseo), No
+
+Características.del.implante.1:
+0, 37, 12, 14, 35, 22, 36, Implante 1 - Posición, 26, 24
+
+Implante.1...Defecto.tipo.I..infraóseo..1:
+0, Ic, No, Id, Implante 1 - Defecto tipo I (infraóseo), Ib
+
+Implante.1...Defecto.tipo.II..supraóseo..1:
+0, Sí, Implante 1 - Defecto tipo II (supraóseo)
+
+Implante.2...Posición:
+0, 35, 14, 16, 36, 25, 37, Implante 2 - Posición, 27
+
+Implante.2...Defecto.tipo.I..infraóseo.:
+0, Ic, No, Ie, Id, Implante 2 - Defecto tipo I (infraóseo), Ib
+
+Implante.2...Defecto.tipo.II..supraóseo.:
+0, Sí, Implante 2 - Defecto tipo II (supraóseo)
+
+Características.del.implante.2:
+0, 12, 36, 32, 34, 22, Implante 1 - Posición, 21, 26, 42
+
+Implante.1...Defecto.tipo.I..infraóseo..2:
+0, No, Ic, Implante 1 - Defecto tipo I (infraóseo), Id
+
+Implante.1...Defecto.tipo.II..supraóseo..2:
+0, Sí, Implante 1 - Defecto tipo II (supraóseo), No
+
+Implante.2...Posición.1:
+0, 13, 34, 32, 24, Implante 2 - Posición, 22, 14, 44
+
+Implante.2...Defecto.tipo.I..infraóseo..1:
+0, No, Ic, Implante 2 - Defecto tipo I (infraóseo), Id, Ib
+
+Implante.2...Defecto.tipo.II..supraóseo..1:
+0, Sí, No, Implante 2 - Defecto tipo II (supraóseo)
+
+Implante.3...Posición:
+0, 14, 32, 42, 26, Implante 3 - Posición, 16, 36, 46
+
+Implante.3...Defecto.tipo.I..infraóseo.:
+0, No, Implante 3 - Defecto tipo I (infraóseo), Id, Ie
+
+Implante.3...Defecto.tipo.II..supraóseo.:
+0, Sí, No, Implante 3 - Defecto tipo II (supraóseo)
+
+Características.del.implante.3:
+0, 31, Implante 1 - Posición
+
+Implante.1...Defecto.tipo.I..infraóseo..3:
+0, Id, Implante 1 - Defecto tipo I (infraóseo)
+
+Implante.1...Defecto.tipo.II..supraóseo..3:
+0, Sí, Implante 1 - Defecto tipo II (supraóseo)
+
+Implante.2...Posición.2:
+0, 41, Implante 2 - Posición
+
+Implante.2...Defecto.tipo.I..infraóseo..2:
+0, Id, Implante 2 - Defecto tipo I (infraóseo)
+
+Implante.2...Defecto.tipo.II..supraóseo..2:
+0, Sí, Implante 2 - Defecto tipo II (supraóseo)
+
+Implante.3...Posición.1:
+0, 34, Implante 3 - Posición
+
+Implante.3...Defecto.tipo.I..infraóseo..1:
+0, Id, Implante 3 - Defecto tipo I (infraóseo)
+
+Implante.3...Defecto.tipo.II..supraóseo..1:
+0, Sí, Implante 3 - Defecto tipo II (supraóseo)
+
+Implante.4...Posición:
+0, 44, Implante 4 - Posición
+
+Implante.4...Defecto.tipo.I..infraóseo.:
+0, Id, Implante 4 - Defecto tipo I (infraóseo)
+
+Implante.4...Defecto.tipo.II..supraóseo.:
+0, Sí, Implante 4 - Defecto tipo II (supraóseo)
+
+Características.del.implante.4:
+0, Implante 1 - Posición
+
+Implante.1...Defecto.tipo.I..infraóseo..4:
+0, Implante 1 - Defecto tipo I (infraóseo)
+
+Implante.1...Defecto.tipo.II..supraóseo..4:
+0, Implante 1 - Defecto tipo II (supraóseo)
+
+Implante.2...Posición.3:
+0, Implante 2 - Posición
+
+Implante.2...Defecto.tipo.I..infraóseo..3:
+0, Implante 2 - Defecto tipo I (infraóseo)
+
+Implante.2...Defecto.tipo.II..supraóseo..3:
+0, Implante 2 - Defecto tipo II (supraóseo)
+
+Implante.3...Posición.2:
+0, Implante 3 - Posición
+
+Implante.3...Defecto.tipo.I..infraóseo..2:
+0, Implante 3 - Defecto tipo I (infraóseo)
+
+Implante.3...Defecto.tipo.II..supraóseo..2:
+0, Implante 3 - Defecto tipo II (supraóseo)
+
+Implante.4...Posición.1:
+0, Implante 4 - Posición
+
+Implante.4...Defecto.tipo.I..infraóseo..1:
+0, Implante 4 - Defecto tipo I (infraóseo)
+
+Implante.4...Defecto.tipo.II..supraóseo..1:
+0, Implante 4 - Defecto tipo II (supraóseo)
+
+Implante.5...Posición:
+0, Implante 5 - Posición
+
+Implante.5...Defecto.tipo.I..infraóseo.:
+0, Implante 5 - Defecto tipo I (infraóseo)
+
+Implante.5...Defecto.tipo.II..supraóseo.:
+0, Implante 5 - Defecto tipo II (supraóseo)
+
+Características.del.implante.5:
+0, 31, Implante 1 - Posición
+
+Implante.1...Defecto.tipo.I..infraóseo..5:
+0, Ia, Implante 1 - Defecto tipo I (infraóseo)
+
+Implante.1...Defecto.tipo.II..supraóseo..5:
+0, Sí, Implante 1 - Defecto tipo II (supraóseo)
+
+Implante.2...Posición.4:
+0, 33, Implante 2 - Posición
+
+Implante.2...Defecto.tipo.I..infraóseo..4:
+0, Ia, Implante 2 - Defecto tipo I (infraóseo)
+
+Implante.2...Defecto.tipo.II..supraóseo..4:
+0, Sí, Implante 2 - Defecto tipo II (supraóseo)
+
+Implante.3...Posición.3:
+0, 36, Implante 3 - Posición
+
+Implante.3...Defecto.tipo.I..infraóseo..3:
+0, No, Implante 3 - Defecto tipo I (infraóseo)
+
+Implante.3...Defecto.tipo.II..supraóseo..3:
+0, Sí, Implante 3 - Defecto tipo II (supraóseo)
+
+Implante.4...Posición.2:
+0, 41, Implante 4 - Posición
+
+Implante.4...Defecto.tipo.I..infraóseo..2:
+0, Ia, Implante 4 - Defecto tipo I (infraóseo)
+
+Implante.4...Defecto.tipo.II..supraóseo..2:
+0, Sí, Implante 4 - Defecto tipo II (supraóseo)
+
+Implante.5...Posición.1:
+0, 43, Implante 5 - Posición
+
+Implante.5...Defecto.tipo.I..infraóseo..1:
+0, Ia, Implante 5 - Defecto tipo I (infraóseo)
+
+Implante.5...Defecto.tipo.II..supraóseo..1:
+0, Sí, Implante 5 - Defecto tipo II (supraóseo)
+
+Implante.6...Posición:
+0, 46, Implante 6 - Posición
+
+Implante.6...Defecto.tipo.I..infraóseo.:
+0, No, Implante 6 - Defecto tipo I (infraóseo)
+
+Implante.6...Defecto.tipo.II..supraóseo.:
+0, Sí, Implante 6 - Defecto tipo II (supraóseo)
+
+Características.del.implante.6:
+0, Implante 1 - Posición
+
+Implante.1...Defecto.tipo.I..infraóseo..6:
+0, Implante 1 - Defecto tipo I (infraóseo)
+
+Implante.1...Defecto.tipo.II..supraóseo..6:
+0, Implante 1 - Defecto tipo II (supraóseo)
+
+Implante.2...Posición.5:
+0, Implante 2 - Posición
+
+Implante.2...Defecto.tipo.I..infraóseo..5:
+0, Implante 2 - Defecto tipo I (infraóseo)
+
+Implante.2...Defecto.tipo.II..supraóseo..5:
+0, Implante 2 - Defecto tipo II (supraóseo)
+
+Implante.3...Posición.4:
+0, Implante 3 - Posición
+
+Implante.3...Defecto.tipo.I..infraóseo..4:
+0, Implante 3 - Defecto tipo I (infraóseo)
+
+Implante.3...Defecto.tipo.II..supraóseo..4:
+0, Implante 3 - Defecto tipo II (supraóseo)
+
+Implante.4...Posición.3:
+0, Implante 4 - Posición
+
+Implante.4...Defecto.tipo.I..infraóseo..3:
+0, Implante 4 - Defecto tipo I (infraóseo)
+
+Implante.4...Defecto.tipo.II..supraóseo..3:
+0, Implante 4 - Defecto tipo II (supraóseo)
+
+Implante.5...Posición.2:
+0, Implante 5 - Posición
+
+Implante.5...Defecto.tipo.I..infraóseo..2:
+0, Implante 5 - Defecto tipo I (infraóseo)
+
+Implante.5...Defecto.tipo.II..supraóseo..2:
+0, Implante 5 - Defecto tipo II (supraóseo)
+
+Implante.6...Posición.1:
+0, Implante 6 - Posición
+
+Implante.6...Defecto.tipo.I..infraóseo..1:
+0, Implante 6 - Defecto tipo I (infraóseo)
+
+Implante.6...Defecto.tipo.II..supraóseo..1:
+0, Implante 6 - Defecto tipo II (supraóseo)
+
+Implante.7...Posición:
+0, Implante 7 - Posición
+
+Implante.7...Defecto.tipo.I..infraóseo.:
+0, Implante 7 - Defecto tipo I (infraóseo)
+
+Implante.7...Defecto.tipo.II..supraóseo.:
+0, Implante 7 - Defecto tipo II (supraóseo)
+
+duracion_intervencion:
+10-20 minutos, 20-40 minutos, 60-90 minutos, 40-60 minutos, 5-10 minutos, 0-5 minutos, 0, 120-180 minutos, 90-120 minutos, >180 minutos, Response
+

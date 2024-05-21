@@ -1,0 +1,84 @@
+---
+output: reprex::reprex_document
+knit: reprex::reprex_render
+---
+
+Describe your issue very briefly here. Then show it with a minimal, self-contained example in the following R chunk.
+
+```{r}
+# El primer paso es cargar los datos
+data = read.csv('datos_Combinated.csv', sep=';')
+
+# Vamos a fracionarlos en los distintos df
+datos_Info_Pacientes = data[, 1:11]
+head(datos_Info_Pacientes)
+
+datos_Patologia_Sistemica = data[, 12:62]
+head(datos_Patologia_Sistemica)
+
+datos_Medicacion_Momento_Intervencion = data[, 63:113]
+head(datos_Medicacion_Momento_Intervencion)
+
+datos_Implantologia = data[, 114:902]
+head(datos_Implantologia)
+
+datos_Medicacion_Post_Intervencion = data[, 901:925]
+head(datos_Medicacion_Post_Intervencion)
+
+#::::::::::::: Cambio de valores:::::::::::::::::::::
+# Genero
+datos_Info_Pacientes$G.nero <- ifelse(datos_Info_Pacientes$G.nero == 1, "hombre", "mujer")
+
+# Tipo de cirugia
+datos_Implantologia$Tipo.de.Intervenci.n.Quir.rgica <- ifelse(datos_Implantologia$Tipo.de.Intervenci.n.Quir.rgica == 1, "Cirugía Dentoalveolar",
+                                                        ifelse(datos_Implantologia$Tipo.de.Intervenci.n.Quir.rgica == 3, "Cirugía Peri-implantaria",
+                                                        ifelse(datos_Implantologia$Tipo.de.Intervenci.n.Quir.rgica == 2, "Implantología Bucal", 
+                                                                datos_Implantologia$Tipo.de.Intervenci.n.Quir.rgica)))
+```
+```{r}
+summary(datos_Medicacion_Post_Intervencion)
+datos_Medicacion_Post_Intervencion$Complicaciones.intraoperatorias..escribir.NO.en.caso.de.no.presentarse. <- ifelse(tolower(datos_Medicacion_Post_Intervencion$Complicaciones.intraoperatorias..escribir.NO.en.caso.de.no.presentarse.) == "no", 0, 1)
+```
+
+```{r}
+
+datos <- datos_Medicacion_Post_Intervencion[, -c(3, 4)]
+```
+
+```{r}
+
+datos[is.na(datos)] <- 0
+num_columnas <- ncol(datos)
+```
+```{r}
+rango_columnas <- 3:22  # Rango numérico de columnas que deseas convertir
+
+for (col_index in rango_columnas) {
+  datos[[col_index]] <- ifelse(datos[[col_index]] != 0, 1, 0)
+}
+```
+```{r}
+
+library(dplyr)
+
+# Convertir la columna a factor para asegurarse de que todos los valores están presentes
+datos$Otro..especifique._625 <- factor(datos$Tï..cnica.de.sutura)
+
+# Aplicar one-hot encoding
+datos <- mutate(datos,
+                No_Sutura = as.numeric(Tï..cnica.de.sutura == 1),
+                Sutura_Puntos_Colchonero = as.numeric(Tï..cnica.de.sutura == 2),
+                Sutura_Simples = as.numeric(Tï..cnica.de.sutura == 3),
+                Sutura_Continua = as.numeric(Tï..cnica.de.sutura == 4),
+                No_especifica_Sutura = as.numeric(Tï..cnica.de.sutura == 5))
+
+# Eliminar la columna original si ya no es necesaria
+datos <- select(datos, -Tï..cnica.de.sutura)
+
+
+```
+
+```{r}
+library(openxlsx)
+write.xlsx(datos, file = "datos_Medi_post.xlsx", row.names = FALSE)
+```

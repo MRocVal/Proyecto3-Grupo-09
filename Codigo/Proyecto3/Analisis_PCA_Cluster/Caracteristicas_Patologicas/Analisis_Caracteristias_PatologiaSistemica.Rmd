@@ -1,0 +1,232 @@
+---
+title: "Analisis Características: Patologia Sistematica"
+author: "Grupo Proyecto 3"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: true
+    toc_float: true
+---
+
+# 1. Carga y Visualización de datos
+
+En este primer punto, se cargan, se separan y visualizan brevemente la disposición de los datos.
+
+```{r}
+# Carga de datos
+data = read.csv('combianted_Total.csv')
+
+# Me quedo con los datos de Patologias Sistemicas
+datos_Patologia_Sistemica <- data[, 1:57]
+head(datos_Patologia_Sistemica)
+
+# Sumamos la columna de tipo de operacíon
+datos_Patologia_Sistemica$TipoOperacion <- data$Tipo_De_Intervencion_Quirurgica
+datos_Patologia_Sistemica$ID_Paciente <- data$ID_Paciente
+head(datos_Patologia_Sistemica)
+```
+
+Como podemos observar, la mayoría de las variables son binarias, para algunas de ellas tenemos que aplicar algunas transformaciones.
+
+Vamos a binarizar, tanto la variable de Alchol y la del Genero.
+
+```{r}
+library(caret)
+
+columnas_a_convertir <- c("Alcohol", "Genero")
+
+# Crear un modelo de dummy variables
+modelo_dummy <- dummyVars(~ ., data = datos_Patologia_Sistemica[columnas_a_convertir], levelsOnly = TRUE)
+
+# Aplicar el modelo para transformar las columnas
+df <- predict(modelo_dummy, newdata = datos_Patologia_Sistemica[columnas_a_convertir])
+
+# Unir las nuevas columnas al dataframe original
+datos_Patologia_Sistemica <- cbind(datos_Patologia_Sistemica, df)
+
+# Quitar las columnas originales si es necesario
+datos_Patologia_Sistemica <- datos_Patologia_Sistemica[, !names(datos_Patologia_Sistemica) %in% columnas_a_convertir]
+
+# Muestra el dataframe resultante
+head(datos_Patologia_Sistemica)
+```
+
+El siguiente paso, vamos a filtar la fecha de nacimiento, para quedarnos tan solo con el año en que nació el paciente, para comprobar si la edad, puede ser una variable de peso en nuestro análisis.
+
+```{r}
+# Convertir la columna de fecha de nacimiento a formato de fecha
+datos_Patologia_Sistemica$Fecha_Nacimiento <- as.Date(datos_Patologia_Sistemica$Fecha_Nacimiento, format = "%d/%m/%y")
+
+# Convertir la columna de fecha de intervención a formato de fecha
+datos_Patologia_Sistemica$Fecha_intervencion <- as.Date(datos_Patologia_Sistemica$Fecha_intervencion, format = "%d/%m/%y")
+
+# Verificar si la fecha de intervención es anterior a la fecha de nacimiento
+intercambiar_fechas <- datos_Patologia_Sistemica$Fecha_intervencion < datos_Patologia_Sistemica$Fecha_Nacimiento
+
+datos_Patologia_Sistemica <- na.omit(datos_Patologia_Sistemica)
+
+# Calcular la edad
+datos_Patologia_Sistemica$Edad <- as.numeric(format(Sys.Date(), "%Y")) - as.numeric(format(datos_Patologia_Sistemica$Fecha_Nacimiento, "%Y"))
+
+# Eliminar filas con edades igual a 0 años o negativas
+datos_Patologia_Sistemica <- datos_Patologia_Sistemica[datos_Patologia_Sistemica$Edad > 0, ]
+
+# Definir los rangos de edad
+rangos_edad <- c(0, 18, 65, Inf) # Jóvenes (0-18), Adultos (19-65), Ancianos (66 o más)
+
+# Etiquetas para los rangos de edad
+etiquetas_edad <- c("Jovenes", "Adultos", "Ancianos")
+
+# Crear la variable categórica de edad
+datos_Patologia_Sistemica$Grupo_Edad <- cut(datos_Patologia_Sistemica$Edad, breaks = rangos_edad, labels = etiquetas_edad, right = FALSE)
+
+# ______________Binarizamos los datos
+library(caret)
+
+columnas_a_convertir <- c('Grupo_Edad')
+
+# Crear un modelo de dummy variables
+modelo_dummy <- dummyVars(~ ., data = datos_Patologia_Sistemica[columnas_a_convertir], levelsOnly = TRUE)
+
+# Aplicar el modelo para transformar las columnas
+df <- predict(modelo_dummy, newdata = datos_Patologia_Sistemica[columnas_a_convertir])
+
+# Unir las nuevas columnas al dataframe original
+datos_Patologia_Sistemica <- cbind(datos_Patologia_Sistemica, df)
+
+# Quitar las columnas originales si es necesario
+datos_Patologia_Sistemica <- datos_Patologia_Sistemica[, !names(datos_Patologia_Sistemica) %in% columnas_a_convertir]
+
+# Muestra el dataframe resultante
+head(datos_Patologia_Sistemica)
+```
+
+Por último, eliminamos las variables que no vamos a introducir en nuestro análisis, estas son:
+
+-   Date_Create
+
+-   Fecha_intervencion
+
+-   Fecha_Nacimiento
+
+-   Edad
+
+```{r}
+# Por ultimo, eliminamos las columnas que no vayamos a meter en el cluster
+library(dplyr)
+
+# Eliminar las columnas
+datos_Patologia_Sistemica <- select(datos_Patologia_Sistemica, -Date_Create, -Fecha_intervencion, -Fecha_Nacimiento, -Edad)
+
+df = unique(datos_Patologia_Sistemica$TipoOperacion)
+df = sum(datos_Patologia_Sistemica$TipoOperacion == 0)
+df
+
+# Suponiendo que tienes un dataframe llamado df
+# Utiliza la indexación basada en filas para eliminar las filas con tipoOperacion igual a 0
+
+datos_Patologia_Sistemica <- datos_Patologia_Sistemica[datos_Patologia_Sistemica$TipoOperacion != 0, ]
+head(datos_Patologia_Sistemica)
+
+```
+
+Una vez tenemos los datos preparados, vamos a por siguiente punto.
+
+# 2. Análisis PCA y Clustering
+
+## PCA
+
+Comenzamos con el PCA, en este análisis vamos a comprobar el pero que tienen algunas de las variables y ver aquellas que son mas importantes para la interpretación de los datos.
+
+```{r}
+# Instala y carga los paquetes necesarios
+library(factoextra)
+library(cluster)
+
+Pca_data = select(datos_Patologia_Sistemica, -TipoOperacion, -ID_Paciente)
+pca_result <- prcomp(Pca_data)
+
+# Visualiza la varianza explicada por cada componente principal
+fviz_eig(pca_result)
+fviz_pca_ind(pca_result,
+             geom.ind = "point", 
+             col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             ggtheme = theme_minimal()) +
+  theme(legend.position = "right")
+# Gráfico de correlaciones entre variables y ejes principales
+fviz_contrib(pca_result, choice = "var", axes = 1:2, top = 10)
+
+# Gráfico de correlaciones entre individuos y ejes principales
+fviz_contrib(pca_result, choice = "ind", axes = 1:2, top = 10)
+
+# Biplot
+# Crear el biplot solo con las variables más importantes
+fviz_pca_biplot(pca_result,
+                col.ind = "cos2", 
+                col.var = "contrib",
+                repel = TRUE,
+                ggtheme = theme_minimal()) +
+  theme(legend.position = "right") +
+  scale_color_gradient(low = "white", high = "red") +  # Cambiar la escala de colores
+  scale_shape_manual(values = c(1, 16))  # Cambiar la forma de los puntos
+
+# Control variable colors using their contributions
+fviz_pca_var(pca_result, col.var="contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping
+             )
+
+
+fviz_pca_ind(pca_result,
+             label = "none", # hide individual labels
+             habillage = datos_Patologia_Sistemica$TipoOperacion, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, 
+             ellipse.type = "confidence", # or "t", "norm", "euclid"
+             repel = TRUE # to avoid overlapping labels
+)
+
+```
+
+## CLUSTER
+
+```{r}
+
+rownames(datos_Patologia_Sistemica) = datos_Patologia_Sistemica$ID_Paciente
+Cluster_data = select(datos_Patologia_Sistemica, -TipoOperacion, -ID_Paciente)
+
+library(dplyr)
+library("factoextra")
+Cluster_data <- mutate_all(Cluster_data, as.numeric)
+
+library("factoextra")
+# Compute hierarchical clustering and cut into 4 clusters
+res <- hcut(Cluster_data, k = 4, stand = TRUE)
+# Visualize
+fviz_dend(res, rect = TRUE, cex = 0.5,
+          k_colors = c("#00AFBB","#2E9FDF", "#E7B800", "#FC4E07"))
+```
+
+```{r}
+# Realizar el análisis de componentes principales (PCA)
+pca_result <- prcomp(Pca_data)
+
+# Obtener las coordenadas de los individuos en el espacio de las componentes principales
+coordenadas_individuos <- pca_result$x
+
+# Realizar clustering en las coordenadas de los individuos
+kmeans_clusters <- kmeans(coordenadas_individuos, centers = 3)  # Cambia el número de clústeres según tus necesidades
+
+# Asignar el cluster a cada individuo
+clusters <- kmeans_clusters$cluster
+
+# Visualizar los individuos en el espacio de las componentes principales con colores por cluster
+fviz_pca_ind(pca_result,
+             geom = "point",
+             col.ind = as.factor(clusters),
+             palette = "viridis",
+             repel = TRUE)
+
+```

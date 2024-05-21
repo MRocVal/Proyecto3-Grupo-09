@@ -1,0 +1,114 @@
+---
+title: "AFC Proyecto III"
+author: "Yassmina"
+output: html_notebook
+---
+
+# 1. Data preparation
+
+```{r warning=FALSE}
+library(dplyr)
+library(caret)
+library(ggplot2)
+library(lattice)
+# Primera fila como nombre de las columnas
+whiteeth = read.csv("general_whiteeth_data.csv", header = TRUE, sep = ",")
+
+# Eliminar filas 720 y 1584 (son nombres de columnas que se quedaron al concatenar datasets)
+whiteeth <- whiteeth %>% slice(-c(720, 1584))
+
+# Eliminar columnas vacías: name, email, etc.
+whiteeth <- whiteeth %>% select(-c(6:9))
+whiteeth <- whiteeth %>% select(-c(21))
+
+# Arreglar el nombre de algunas columnas
+colnames(whiteeth)[15] <- "No fumador/a"
+colnames(whiteeth)[912] <- "Amoxicilina 750 mg"
+
+# Inspeccionar qué columnas hay
+# colnames(whiteeth)
+```
+
+## Conversion to binary
+
+```{r}
+# Fumadores o no
+columnas_a_recorrer1 <- 15:17
+for (col in columnas_a_recorrer1) {
+  whiteeth[, col] <- ifelse(is.na(whiteeth[, col]) | whiteeth[, col] == "", 0, 1)
+}
+
+# Número de cigarrillos: poner 0 si no hay nada
+whiteeth$Número.de.cigarrillos.día <- ifelse(is.na(whiteeth$Número.de.cigarrillos.día) | whiteeth$Número.de.cigarrillos.día == "", 0,
+                                             whiteeth$Número.de.cigarrillos.día)
+whiteeth$Número.de.cigarrillos.día <- gsub("[^0-9-]", "", whiteeth$Número.de.cigarrillos.día)
+
+# Patologías
+columnas_a_recorrer2 <- 21:112
+for (col in columnas_a_recorrer2) {
+  whiteeth[, col] <- ifelse(is.na(whiteeth[, col]) | whiteeth[, col] == "", 0, 1)
+}
+
+# Características operación: poner 0 si no hay nada
+columnas_a_recorrer3 <- 113:911
+for (col in columnas_a_recorrer3) {
+  whiteeth[, col] <- ifelse(is.na(whiteeth[, col]) | whiteeth[, col] == "", 0, whiteeth[, col])
+}
+
+# Medicamentos
+columnas_a_recorrer4 <- 912:931
+for (col in columnas_a_recorrer4) {
+  whiteeth[, col] <- ifelse(is.na(whiteeth[, col]) | whiteeth[, col] == "", 0, 1)
+}
+
+# Otro medicamento: poner 0 si no hay nada
+whiteeth[, 932] <- ifelse(is.na(whiteeth[, 932]) | whiteeth[, 932] == "", 0, whiteeth[, 932])
+```
+
+# 2. Multiple AFC
+
+```{r warning=FALSE}
+library(mlbench)
+library(estimability)
+library(FactoMineR)
+library(factoextra)
+library(knitr)
+library(stats)
+library(grid)
+library(gridExtra)
+
+# Convertir a categóricas todo
+data <- lapply(whiteeth, as.factor)
+data <- as.data.frame(data)
+
+# Realizar el Análisis Factorial de Correspondencias Múltiples (MCA)
+mca <- MCA(data, ncp = 4, graph = TRUE) 
+
+eig.val <- get_eigenvalue(mca)         
+VPmedio <- 100 * (1/nrow(eig.val))
+
+fviz_eig(mca, addlabels = TRUE) + geom_hline(yintercept = VPmedio, linetype = 2, color = "red") 
+```
+```{r}
+fviz_contrib(mca, choice = "var", axes = 1:2, top = 10)
+fviz_contrib(mca, choice = "var", axes = 3:4, top = 10)
+```
+
+# 3. Variables selection
+
+```{r}
+# eta-squared (η²) es una medida de la contribución de una variable categórica a una dimensión particular del MCA.
+contrib <- mca[["var"]][["eta2"]]                    # Se saca matriz de contribuciones (variables x dimensiones)
+sum_contrib <- rowSums(contrib)                      # Se suma la contribución de cada variable a las 4 primeras dimensiones
+order <- order(sum_contrib, decreasing = TRUE)       # Se ordenan las variables según sus contribuciones
+num_selec <- round(length(order) * 0.5)              # Se mira cuántas variables implicaría seleccionar el 50%
+var_selec <- names(sum_contrib)[order[1:num_selec]]  # Seleccionamos sus nombres con sum_contrib y su índice con order
+mca_reduc <- whiteeth[, var_selec, drop = FALSE]     # Creamos matriz de datos reducida
+```
+
+# 4. Dataframe saving
+
+```{r}
+write.csv(mca_reduc, "whiteeth_reduced.csv", row.names = FALSE)
+```
+

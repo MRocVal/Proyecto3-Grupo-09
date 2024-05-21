@@ -1,0 +1,569 @@
+---
+title: "Comparación de Pacientes en Cirugía de Implantes Dentales: Colocación vs. Periimplantaria"
+author: "Grupo Proyecto 3"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# INTRODUCCIÓN
+
+Este análisis compara las **características de pacientes sometidos a cirugía de colocación de implantes en la unidad de Implantología Bucal** con aquellos tratados en la **Unidad de Mantenimiento de Implantes**. El **objetivo** es **identificar factores de riesgo para complicacione**s en implantes dentales, **mejorando** así la **atención clínica** y la selección de pacientes.
+
+# CARGA Y LIMPIEZA DE DATOS
+
+## Carga
+
+```{r}
+# Cargamos los datos
+data = read.csv('combianted_Total.csv')
+
+#Visualizamos los tipos de cirugia
+unique(data$Tipo_De_Intervencion_Quirurgica)
+
+```
+
+En odontología, tenemos tres tipos principales de intervenciones quirúrgicas:
+
+1.  ***Cirugía Dentoalveolar***: Tratamiento de enfermedades y afecciones dentales y de los tejidos circundantes.
+
+2.  ***Implantología Bucal***: Colocación de implantes dentales para reemplazar dientes perdidos.
+
+3.  ***Cirugía Peri-implantaria***: Tratamiento de afecciones alrededor de los implantes dentales.
+
+Nos centraremos en las intervenciones de **Implantología Bucal** y **Cirugía Peri-implantaria** para este estudio.
+
+##Prueba AFC
+Vamos a intentar quedarnos con las características de los dos tipos de operación, creando  variables cualitativas (tipo de medicamento actual, género, consumo alcohol, tabaco... y tipo de patología sistemática) para poder explicar a través de un AFC si pertenecen al segundo tipo o al tercer tipo. 
+
+```{r}
+library(dplyr)
+data <- data %>%
+  filter(data$Tipo_De_Intervencion_Quirurgica == "Implantologia Bucal" | data$Tipo_De_Intervencion_Quirurgica == "CirugÃ­a Peri-implantaria" )
+data <- data[, 1:111]
+conteo <- table(data$Tipo_De_Intervencion_Quirurgica)
+print(conteo)
+
+```
+
+
+```{r}
+#creamos columna del tipo de patología
+for(i in 17:57) {
+  # Accedemos al nombre de la columna i-ésima
+  col_name <- names(data)[i]
+  
+  # Usamos un bucle para revisar cada fila
+  for(j in 1:nrow(data)) {
+    # Si encontramos un 1 en la columna i-ésima de la fila j-ésima
+    if(data[j, i] == 1) {
+      # Actualizamos 'Patologia_1stemica' con el nombre de la columna actual
+      data[j, 'Patologia_1stemica'] <- col_name
+    }
+  }
+}
+data <- data %>%
+  mutate(Patologia_1stemica = replace(Patologia_1stemica, Patologia_1stemica == "0", "ninguna"))
+
+
+
+
+
+
+#creamos una columna del tipo de medicación
+for(i in 60:108) {
+  # Accedemos al nombre de la columna i-ésima
+  col_name <- names(data)[i]
+  
+  # Usamos un bucle para revisar cada fila
+  for(j in 1:nrow(data)) {
+    # Si encontramos un 1 en la columna i-ésima de la fila j-ésima
+    if(data[j, i] == 1) {
+      # Actualizamos 'Patologia_1stemica' con el nombre de la columna actual
+      data[j, 'Medicacion_Actual2'] <- col_name
+    }
+  }
+}
+data <- data %>%
+  mutate(Medicacion_Actual2 = replace(Medicacion_Actual2, Medicacion_Actual2 == "0", "ninguna"))
+
+
+data <- data %>%
+  select(-c(17:57, 60:108))
+
+conteo <- table(data$Tipo_De_Intervencion_Quirurgica)
+print(conteo)
+```
+```{r}
+#install.packages('lubridate')
+library(lubridate)
+library(dplyr)
+
+# Primero, ajustamos los años en la fecha de nacimiento
+data$Fecha_Nacimiento <- as.character(data$Fecha_Nacimiento)
+
+data$Fecha_Nacimiento <- sapply(data$Fecha_Nacimiento, function(fecha) {
+  partes <- strsplit(fecha, "/")[[1]]
+  año <- as.numeric(partes[3])
+  if (año > 20 && año <= 99) {  # Si el año está entre 21 y 99, se considera siglo XX
+    partes[3] <- paste0("19", partes[3])
+  } else if (año <= 20) {  # Si el año es 20 o menor, se considera siglo XXI
+    partes[3] <- paste0("20", partes[3])
+  }
+  paste(partes[1], partes[2], partes[3], sep = "/")
+})
+
+data$Fecha_Nacimiento <- dmy(data$Fecha_Nacimiento)
+
+# Ahora calculamos la edad
+data$edad <- floor(interval(start = data$Fecha_Nacimiento, end = Sys.Date()) / years(1))
+
+# Finalmente, creamos la columna 'categoria_edad' con las categorías especificadas
+data <- data %>%
+  mutate(categoria_edad = case_when(
+    edad >= 10 & edad < 20 ~ '10-20',
+    edad >= 20 & edad < 30 ~ '20-30',
+    edad >= 30 & edad < 40 ~ '30-40',
+    edad >= 40 & edad < 50 ~ '40-50',
+    edad >= 50 & edad < 60 ~ '50-60',
+    edad >= 60 & edad < 70 ~ '60-70',
+    edad >= 70 & edad < 80 ~ '70-80',
+    edad >= 80 & edad < 90 ~ '80-90',
+    edad >= 90 & edad <= 100 ~ '90-100',
+    TRUE ~ 'Fuera de rango'
+  ))
+conteo <- table(data$Tipo_De_Intervencion_Quirurgica)
+print(conteo)
+
+```
+
+
+
+```{r}
+#creamos variable nivel de fumador categorico 
+data <- data %>%
+  mutate(nivel_de_fumador = case_when(
+    `Fumador.a` == 1 ~ "Fumador.a",
+    `No.fumador.a` == 1 & `Exfumador.a` == 1 ~ "Exfumador.a",
+    `Exfumador.a` == 1 & `No.fumador.a` == 0 ~ "Exfumador.a",
+    `No.fumador.a` == 1 & `Exfumador.a` == 0 ~ "No.fumador.a",
+    TRUE ~ NA_character_  # Para cualquier otro caso no especificado, asignamos NA
+  ))
+
+
+#eliminamos las que hemos transformado (agrupado en una columna)
+
+data <- data %>%
+  select(-Fecha_Nacimiento, -Date_Create, -IP_Adress, -Operador, -Auxiliar, -Jefe_de_dia, -Fecha_intervencion, -Fecha_Nacimiento, -No.fumador.a, -Exfumador.a, -Fumador.a, -Otras_Drogas, -Medicacion_actual, -Otro..especifique., -edad, -Tipo_De_cirugia, -Otro..especifique._17)
+
+data <- data %>%
+  select(-NÃºmero_de_cigarrillos.dÃ.a)
+data <- data[!is.na(data$nivel_de_fumador), ]
+
+conteo <- table(data$Tipo_De_Intervencion_Quirurgica)
+print(conteo)
+head(data)
+
+```
+COmo patologia sistematica y medicacion actual contienen muchos valores con pocas muestras vamos a poner que se agrupen los que salgan menos de x veces en un valor llamado otros (así pasamos de explicar el 6% de la variabilidad al 12%) :
+
+```{r}
+#install.packages('estimability')
+#install.packages('FactoMineR')
+#install.packages('factoextra')
+library(estimability)
+library(FactoMineR)
+library(factoextra)
+
+# Obtener la frecuencia de cada valor en Patologia_1stemica
+freq_patologia <- table(data$Patologia_1stemica)
+
+# Mostrar los valores que aparecen menos de 5 veces
+print(freq_patologia[freq_patologia < 5])
+
+# Identificar los valores que aparecen menos de 5 veces
+infrequent_values <- names(freq_patologia[freq_patologia < 5])
+
+# Actualizar los valores a 'Otros'
+data$Patologia_1stemica[data$Patologia_1stemica %in% infrequent_values] <- 'Otros'
+
+# Verificar los cambios
+table(data$Patologia_1stemica)
+
+
+
+#y hacemos lo mismo con medicacion actual
+# Obtener la frecuencia de cada valor en Patologia_1stemica
+freq_medicacion <- table(data$Medicacion_Actual2)
+
+# Mostrar los valores que aparecen menos de 5 veces
+print(freq_medicacion[freq_medicacion < 2])
+
+# Identificar los valores que aparecen menos de 5 veces
+infrequent_values <- names(freq_medicacion[freq_medicacion < 5])
+
+# Actualizar los valores a 'Otros'
+data$Medicacion_Actual2[data$Medicacion_Actual2 %in% infrequent_values] <- 'Otros'
+
+# Verificar los cambios
+table(data$Medicacion_Actual2)
+
+dataCAT <- data
+
+
+
+
+
+res.mca2 <- MCA(data, graph = FALSE, quali.sup = 1)
+eig.val2 <- get_eigenvalue(res.mca2) 
+VPmedio2 = 100 * (1/nrow(eig.val2)) 
+fviz_eig(res.mca2, addlabels = TRUE) + geom_hline(yintercept=VPmedio2, linetype=2, color="red")
+```
+
+Vemos si separan los individuos
+
+```{r}
+# Instalar devtools si aún no lo has hecho
+
+library(FactoMineR)
+library(factoextra)
+
+library(ggplot2)
+library(factoextra)
+
+# Asumiendo que res.mca2 es tu resultado de MCA
+# Extraemos manualmente las coordenadas de los individuos desde el resultado del MCA
+ind.coords <- as.data.frame(res.mca2$ind$coord)
+
+# Añadimos la variable 'tipo_de_operacion' al data.frame de coordenadas
+# Asegúrate de que la longitud de 'datos$tipo_de_operacion' y 'ind.coords' coinciden
+ind.coords$Tipo_De_Intervencion_Quirurgica <- data$Tipo_De_Intervencion_Quirurgica
+
+
+names(ind.coords) <- gsub(" ", ".", names(ind.coords))
+# Ahora que tenemos un data.frame con las coordenadas y el tipo de operación, podemos proceder a graficar
+ggplot(ind.coords, aes(x = Dim.1, y = Dim.2, color = Tipo_De_Intervencion_Quirurgica)) +
+  geom_point() +
+  theme_minimal() +
+  labs(x = "Dimensión 1", y = "Dimensión 2", title = "MCA: Gráfico de Puntuaciones por Tipo de Operación", color = "Tipo_De_Intervencion_Quirurgica") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed")
+
+
+```
+
+Contribuciones variables
+
+```{r}
+plot_var_contrib_pca <- fviz_pca_var(res.mca2, 
+                                     select.var = list(contrib = 10), # Selecciona variables que contribuyen al menos un 10%
+                                     col.var = "contrib", # Color de las variables basado en su contribución
+                                     gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), # Colores del gradiente
+                                     repel = TRUE) # Evitar solapamiento de etiquetas
+
+# Mostrar el gráfico
+print(plot_var_contrib_pca)
+```
+
+
+
+
+
+
+
+
+## PCA para ver si se separa
+Volvemos a cargar los datos porque ahora los queremos numéricos
+
+
+```{r}
+library(factoextra)
+library(cluster)
+library(gridExtra)
+
+data = read.csv('combianted_Total.csv')
+data <- data[, 1:111]
+
+
+#convertimos la variable genero a binario: 
+data <- data %>%
+  mutate(Genero = case_when(
+    Genero == "Mujer" ~ "1",
+    Genero == "Hombre" ~ "0",
+    Genero == "0" ~ NA_character_, # Convertimos el "0" string a NA
+    TRUE ~ Genero # Mantener el valor original en otros casos (si los hay)
+  )) %>%
+  mutate(Genero = as.numeric(Genero)) # Convertir a numérico para tener 1, 0 y NA
+
+data <- data %>%
+  filter(!is.na(Genero))
+
+data <- data %>% filter(data$Tipo_De_Intervencion_Quirurgica == "Implantologia Bucal" | data$Tipo_De_Intervencion_Quirurgica == "CirugÃ­a Peri-implantaria" )
+
+tipo_intervencion <- data$Tipo_De_Intervencion_Quirurgica
+data <- select(data,-IP_Adress, -Operador, -Auxiliar, -Jefe_de_dia, -Fumador.a, -Medicacion_actual, -NÃºmero_de_cigarrillos.dÃ.a)
+dataPCA = data
+
+dataPCA_comparativo <- data %>%
+  select_if(is.numeric)
+```
+
+```{r}
+# Realizar el análisis de componentes principales (PCA)
+pca_result <- prcomp(dataPCA_comparativo)
+
+# Gráfico de la varianza explicada por cada componente principal
+plot_eigenvalues <- fviz_eig(pca_result)
+
+# Gráfico de las contribuciones de las variables a los ejes principales
+plot_var_contrib <- fviz_contrib(pca_result, choice = "var", axes = 1:2, top = 10)
+
+# Gráfico de las contribuciones de los individuos a los ejes principales
+plot_ind_contrib <- fviz_contrib(pca_result, choice = "ind", axes = 1:2, top = 10)
+
+# Organizar los gráficos en una cuadrícula
+grid.arrange(plot_eigenvalues, plot_ind_contrib,
+             ncol = 1)
+
+plot_var_contrib
+```
+```{r}
+plot_var_contrib
+```
+```{r}
+plot_ind_pca_gender <- fviz_pca_ind(pca_result,
+                                    label = "none",
+                                    habillage = tipo_intervencion,
+                                    palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+                                    addEllipses = TRUE,
+                                    ellipse.type = "confidence",
+                                    repel = TRUE)
+plot_ind_pca_gender
+```
+
+probamos ahora quitando la variable Patologia_1stematica y Medicacion_Actual2 ya que esa infor ya nos la dan las distintas patlogías y medicaciones. Además, tb añadiremos probar a eliminamos las medicinas o enfermedades que apaerzcan menos de 3 veces. (2 o menos) 
+
+
+```{r}
+
+dataPCA_comparativo <- select(dataPCA_comparativo, -Patologia_1stemica, -Medicacion_Actual2)
+
+# Instala y carga el paquete dplyr si aún no lo has hecho
+if (!require(dplyr)) {
+  install.packages("dplyr")
+}
+library(dplyr)
+
+# Suponiendo que tienes un DataFrame llamado dataPCA_comparativo
+
+# Función para filtrar y eliminar variables con 1 dos veces o menos a partir de la cuarta columna
+filtrar_variables <- function(data, threshold = 2) {
+  
+  # Contar las apariciones de 1 en cada columna a partir de la cuarta columna
+  conteo <- data %>% 
+    select(4:ncol(data)) %>% 
+    summarise_all(sum)
+  
+  # Identificar columnas a eliminar
+  columnas_eliminar <- names(conteo)[conteo <= threshold]
+  
+  # Eliminar las columnas del DataFrame original
+  data_filtrado <- data %>% 
+    select(-one_of(columnas_eliminar))
+  
+  return(data_filtrado)
+}
+
+# Aplicar la función para filtrar variables a partir de la cuarta columna
+dataPCA_comparativo_filtrado <- filtrar_variables(dataPCA_comparativo)
+
+
+pca_result <- prcomp(dataPCA_comparativo_filtrado)
+
+# Gráfico de la varianza explicada por cada componente principal
+plot_eigenvalues <- fviz_eig(pca_result)
+
+# Gráfico de las contribuciones de las variables a los ejes principales
+plot_var_contrib <- fviz_contrib(pca_result, choice = "var", axes = 1:2, top = 10)
+
+# Gráfico de las contribuciones de los individuos a los ejes principales
+plot_ind_contrib <- fviz_contrib(pca_result, choice = "ind", axes = 1:2, top = 10)
+
+# Organizar los gráficos en una cuadrícula
+grid.arrange(plot_eigenvalues, plot_ind_contrib,
+             ncol = 1)
+
+plot_var_contrib
+plot_ind_contrib
+
+```
+```{r}
+plot_ind_pca_gender <- fviz_pca_ind(pca_result,
+                                    label = "none",
+                                    habillage = tipo_intervencion,
+                                    palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+                                    addEllipses = TRUE,
+                                    ellipse.type = "confidence",
+                                    repel = TRUE)
+plot_ind_pca_gender
+```
+
+##INTENTO REGLAS DE ASOCIACIÓN
+```{r}
+dataRA <- data %>% 
+  mutate(tipo_operacion = ifelse(Tipo_De_Intervencion_Quirurgica == "Implantologia Bucal", 0,
+                                 ifelse(Tipo_De_Intervencion_Quirurgica == "Cirugía Peri-implantaria", 1, NA)))
+
+dataRA <- dataRA %>%
+  select_if(is.numeric)
+#eliminamos los datos que sean todos sus valores = 0
+# Identificar columnas con menos de dos valores únicos
+# Identificar columnas numéricas con variabilidad suficiente
+# Identificar columnas numéricas con variabilidad suficiente
+cols_to_discretize <- sapply(dataRA[, numeric_cols], function(col) length(unique(col)) > 1)
+print(cols_to_discretize)
+# Seleccionar solo las columnas con variabilidad suficiente para discretizar
+data_discretize <- dataRA[, numeric_cols][, cols_to_discretize]
+
+# Selecciona columnas numéricas de data_discretize
+numeric_cols_discretize <- sapply(data_discretize, is.numeric)
+
+# Discretizar columnas numéricas con variabilidad suficiente
+data_discretized <- discretizeDF(data_discretize[, numeric_cols_discretize])
+
+
+
+#install.packages("arules")
+library(arules)
+
+# Filtrar los datos para quedarse solo con las transacciones donde tipo_operacion es 1
+data_filt <- subset(data_discretized, tipo_operacion == 1)
+
+# Convertir los datos a un objeto de clase transactions
+trans <- as(data_filt, "transactions")
+unique(data$Genero)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#AFC SOLO DE LOS DE PERIIMPLANTITS
+
+Realizamos un AFC a partir solo de los de cirugía periimplantaria, para ver que categóricas influyen 
+en los pacientes solo de periimplantarias. 
+
+```{r}
+datos_Periimplantaria_CAT <- dataCAT %>%
+  filter(data$Tipo_De_Intervencion_Quirurgica == "CirugÃ­a Peri-implantaria")
+
+res.mca2 <- MCA(datos_Periimplantaria_CAT, graph = FALSE, quali.sup = 1)
+eig.val2 <- get_eigenvalue(res.mca2) 
+VPmedio2 = 100 * (1/nrow(eig.val2)) 
+fviz_eig(res.mca2, addlabels = TRUE) + geom_hline(yintercept=VPmedio2, linetype=2, color="red")
+```
+```{r}
+plot_var_contrib_pca <- fviz_pca_var(res.mca2, 
+                                     select.var = list(contrib = 10), # Selecciona variables que contribuyen al menos un 10%
+                                     col.var = "contrib", # Color de las variables basado en su contribución
+                                     gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), # Colores del gradiente
+                                     repel = TRUE) # Evitar solapamiento de etiquetas
+
+# Mostrar el gráfico
+print(plot_var_contrib_pca)
+```
+
+
+#A PARTIR DE AQUÍ PCA POR SEPARADO
+
+Comparamos que variables son las mas diferentes en los distintos pacientes. 
+
+```{r}
+
+#head(datos_Implantologia_Bucal)
+library(dplyr)
+
+dataPCA <- select(dataPCA, -Patologia_1stemica, -Medicacion_Actual2)
+datos_Periimplantaria <- dataPCA %>%
+  filter(dataPCA$Tipo_De_Intervencion_Quirurgica == "CirugÃ­a Peri-implantaria")
+datos_Periimplantaria_p <- datos_Periimplantaria %>%
+  select_if(is.numeric)
+
+datos_Implantologia_Bucal <- dataPCA %>%
+  filter(dataPCA$Tipo_De_Intervencion_Quirurgica == "Implantologia Bucal")
+datos_Implantologia_Bucal_p <- datos_Implantologia_Bucal %>%
+  select_if(is.numeric)
+
+```
+
+Primero, creamos un subconjunto llamado *'datos_Implantologia_Bucal'*, que contiene únicamente las filas de *'data'* donde la variable *'Tipo_De_Intervencion_Quirurgica'* es igual a *'Implantologia Bucal'*.
+
+Luego, creamos otro subconjunto llamado *'datos_Periimplantaria'*, que contiene las filas de *'data'* donde la variable *'Tipo_De_Intervencion_Quirurgica'* es igual a *'Cirugía Peri-implantaria'*.
+
+Finalmente, ambos subconjuntos se reducen a las primeras 57 columnas y se asignan a las variables *'datos_Implantologia_Bucal'* y *'datos_Periimplantaria'*, respectivamente.
+
+
+
+## Limpieza
+
+Por último, vamos a limpiar los datos y prerararlo para los análisis.
+
+
+# PCA
+
+
+En este análisis de PCA, exploraremos las características de los pacientes sometidos a **Implantología Bucal** y **Cirugía Periimplantaria** en odontología. El PCA nos permitirá identificar patrones y relaciones entre las variables, proporcionando conociiento sobre las diferencias y similitudes entre ambas intervenciones quirúrgicas.
+
+## Implantologia
+
+```{r}
+library(factoextra)
+library(cluster)
+library(gridExtra)
+
+pca_result1 <- prcomp(datos_Periimplantaria_p)
+
+# Gráfico de la varianza explicada por cada componente principal
+plot_eigenvalues1 <- fviz_eig(pca_result1)
+
+# Gráfico de las contribuciones de las variables a los ejes principales
+plot_var_contrib1 <- fviz_contrib(pca_result1, choice = "var", axes = 1:2, top = 10)
+
+
+
+
+
+pca_result2 <- prcomp(datos_Implantologia_Bucal_p)
+
+# Gráfico de la varianza explicada por cada componente principal
+plot_eigenvalues2 <- fviz_eig(pca_result2)
+
+# Gráfico de las contribuciones de las variables a los ejes principales
+plot_var_contrib2 <- fviz_contrib(pca_result2, choice = "var", axes = 1:2, top = 10)
+
+# Organizar los gráficos en una cuadrícula
+grid.arrange(plot_eigenvalues1, plot_eigenvalues2,
+             ncol = 1)
+
+grid.arrange(plot_var_contrib1, plot_var_contrib2,
+             ncol = 1)
+
+```
